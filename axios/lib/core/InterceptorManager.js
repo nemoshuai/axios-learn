@@ -3,7 +3,7 @@
 var utils = require('./../utils');
 
 function InterceptorManager() {
-  this.handlers = [];
+  this.handlers = []; // 存储拦截函数
 }
 
 /**
@@ -16,12 +16,16 @@ function InterceptorManager() {
  */
 InterceptorManager.prototype.use = function use(fulfilled, rejected, options) {
   this.handlers.push({
+    // 成功回调
     fulfilled: fulfilled,
+    // 失败回调
     rejected: rejected,
+    // 是否同步调用拦截器
     synchronous: options ? options.synchronous : false,
+    // 返回布尔值判断是否不执行当前拦截器逻辑
     runWhen: options ? options.runWhen : null
   });
-  return this.handlers.length - 1;
+  return this.handlers.length - 1; // 以下标作为拦截器ID，作为删除拦截器的参数
 };
 
 /**
@@ -44,8 +48,9 @@ InterceptorManager.prototype.eject = function eject(id) {
  * @param {Function} fn The function to call for each interceptor
  */
 InterceptorManager.prototype.forEach = function forEach(fn) {
+  // 迭代所有注册的拦截器
   utils.forEach(this.handlers, function forEachHandler(h) {
-    if (h !== null) {
+    if (h !== null) { // 排除被remove的
       fn(h);
     }
   });

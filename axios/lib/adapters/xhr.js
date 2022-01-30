@@ -13,11 +13,16 @@ var Cancel = require('../cancel/Cancel');
 
 module.exports = function xhrAdapter(config) {
   return new Promise(function dispatchXhrRequest(resolve, reject) {
+    //  请求数据
     var requestData = config.data;
+    // 请求头部新鲜
     var requestHeaders = config.headers;
+    // 响应类型
     var responseType = config.responseType;
     var onCanceled;
+    // 请求完成
     function done() {
+      // 移除取消请求监听
       if (config.cancelToken) {
         config.cancelToken.unsubscribe(onCanceled);
       }
@@ -34,22 +39,28 @@ module.exports = function xhrAdapter(config) {
     var request = new XMLHttpRequest();
 
     // HTTP basic authentication
+    // 权限相关
     if (config.auth) {
       var username = config.auth.username || '';
       var password = config.auth.password ? unescape(encodeURIComponent(config.auth.password)) : '';
       requestHeaders.Authorization = 'Basic ' + btoa(username + ':' + password);
     }
 
+    // 获取请求完整路径
     var fullPath = buildFullPath(config.baseURL, config.url);
+    // 初始化请求
     request.open(config.method.toUpperCase(), buildURL(fullPath, config.params, config.paramsSerializer), true);
 
+    // 设置过期时间，  默认 timeout: 0,
     // Set the request timeout in MS
     request.timeout = config.timeout;
 
+    // 当process结束的时候。
     function onloadend() {
       if (!request) {
         return;
       }
+      // 处理响应
       // Prepare the response
       var responseHeaders = 'getAllResponseHeaders' in request ? parseHeaders(request.getAllResponseHeaders()) : null;
       var responseData = !responseType || responseType === 'text' ||  responseType === 'json' ?
@@ -63,10 +74,13 @@ module.exports = function xhrAdapter(config) {
         request: request
       };
 
+      // 根据response Status，判断当前请求成功还是失败
       settle(function _resolve(value) {
+        // 请求成功
         resolve(value);
         done();
       }, function _reject(err) {
+        // 请求失败
         reject(err);
         done();
       }, response);
@@ -75,6 +89,7 @@ module.exports = function xhrAdapter(config) {
       request = null;
     }
 
+    // 如果已经绑定
     if ('onloadend' in request) {
       // Use onloadend if available
       request.onloadend = onloadend;
@@ -110,7 +125,7 @@ module.exports = function xhrAdapter(config) {
       request = null;
     };
 
-    // Handle low level network errors
+    // Handle low level network errors 处理网络错误
     request.onerror = function handleError() {
       // Real errors are hidden from us by the browser
       // onerror should only fire if it's a network error
@@ -120,9 +135,16 @@ module.exports = function xhrAdapter(config) {
       request = null;
     };
 
-    // Handle timeout
+    // Handle timeout 超时
     request.ontimeout = function handleTimeout() {
       var timeoutErrorMessage = config.timeout ? 'timeout of ' + config.timeout + 'ms exceeded' : 'timeout exceeded';
+      /**
+       * {
+       *  silentJSONParsing: true,
+          forcedJSONParsing: true,
+           clarifyTimeoutError: false
+        }
+       */
       var transitional = config.transitional || defaults.transitional;
       if (config.timeoutErrorMessage) {
         timeoutErrorMessage = config.timeoutErrorMessage;
@@ -174,6 +196,7 @@ module.exports = function xhrAdapter(config) {
       request.responseType = config.responseType;
     }
 
+    // -- 绑定下载上传事件-
     // Handle progress if needed
     if (typeof config.onDownloadProgress === 'function') {
       request.addEventListener('progress', config.onDownloadProgress);
@@ -184,6 +207,10 @@ module.exports = function xhrAdapter(config) {
       request.upload.addEventListener('progress', config.onUploadProgress);
     }
 
+    // -- 绑定下载上传事件-
+
+
+    // 取消请求
     if (config.cancelToken || config.signal) {
       // Handle cancellation
       // eslint-disable-next-line func-names
@@ -191,12 +218,13 @@ module.exports = function xhrAdapter(config) {
         if (!request) {
           return;
         }
-        reject(!cancel || (cancel && cancel.type) ? new Cancel('canceled') : cancel);
-        request.abort();
+        reject(!cancel || (cancel && cancel.type) ? new Cancel('canceled') : cancel); //  统一返回的Cancel类型
+        request.abort(); // 中断请求
         request = null;
       };
 
       config.cancelToken && config.cancelToken.subscribe(onCanceled);
+      // AbortController
       if (config.signal) {
         config.signal.aborted ? onCanceled() : config.signal.addEventListener('abort', onCanceled);
       }
@@ -206,6 +234,7 @@ module.exports = function xhrAdapter(config) {
       requestData = null;
     }
 
+    // 发送请求
     // Send the request
     request.send(requestData);
   });

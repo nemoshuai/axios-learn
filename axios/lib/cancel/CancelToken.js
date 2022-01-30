@@ -9,6 +9,9 @@ var Cancel = require('./Cancel');
  * @param {Function} executor The executor function.
  */
 function CancelToken(executor) {
+  /**
+   * cancelToken: new CancelToken(function(c) { cancel = c })
+   */
   if (typeof executor !== 'function') {
     throw new TypeError('executor must be a function.');
   }
@@ -22,6 +25,7 @@ function CancelToken(executor) {
   var token = this;
 
   // eslint-disable-next-line func-names
+  // 调用了source.cancel时，执行监听函数
   this.promise.then(function(cancel) {
     if (!token._listeners) return;
 
@@ -29,12 +33,13 @@ function CancelToken(executor) {
     var l = token._listeners.length;
 
     for (i = 0; i < l; i++) {
-      token._listeners[i](cancel);
+      token._listeners[i](cancel); // 执行adaptor中注册的监听函数事件
     }
     token._listeners = null;
   });
 
   // eslint-disable-next-line func-names
+  // 完全不知道啥时候回走到 估计得看有什么用法
   this.promise.then = function(onfulfilled) {
     var _resolve;
     // eslint-disable-next-line func-names
@@ -53,11 +58,20 @@ function CancelToken(executor) {
   executor(function cancel(message) {
     if (token.reason) {
       // Cancellation has already been requested
+      // 当前请求已经被取消了
       return;
     }
 
+    /**
+    * Cancel的实现非常简单，传递错误消息，重载toString, 格式输出消息，设置__CANCEL__为true
+    * function Cancel(message) { this.message = message;}
+    * Cancel.prototype.toString = function toString() {
+    *     return 'Cancel' + (this.message ? ': ' + this.message : '');
+    * };
+    * Cancel.prototype.__CANCEL__ = true;
+    */
     token.reason = new Cancel(message);
-    resolvePromise(token.reason);
+    resolvePromise(token.reason); // 这里的reason最终会抛到dispatchRequest中onAdapterRejection方法 传递给isCancel，抛出去取消请求错误，返回被reject的promise
   });
 }
 
@@ -73,7 +87,13 @@ CancelToken.prototype.throwIfRequested = function throwIfRequested() {
 /**
  * Subscribe to the cancel signal
  */
-
+/**
+ * listener = function(cancel) {
+        if (req.aborted) return;
+        req.abort();
+        reject(!cancel || (cancel && cancel.type) ? new Cancel('canceled') : cancel);
+    };
+ */
 CancelToken.prototype.subscribe = function subscribe(listener) {
   if (this.reason) {
     listener(this.reason);
@@ -108,12 +128,24 @@ CancelToken.prototype.unsubscribe = function unsubscribe(listener) {
 CancelToken.source = function source() {
   var cancel;
   var token = new CancelToken(function executor(c) {
-    cancel = c;
+    cancel = c; // cancel(message)
   });
   return {
-    token: token,
-    cancel: cancel
+    token: token, // 传递给axios config的cancelToken字段
+    cancel: cancel // 调用source.cancel 取消请求
   };
 };
 
 module.exports = CancelToken;
+
+
+// 构造函数
+// function CancelToken() {}
+// // 取消请求被调用时抛出取消请求信息
+// CancelToken.prototype.throwIfRequested = function() {}
+// // 注册监听取消请求事件，保存到token._listener
+// CancelToken.prototype.subscribe = function() {}
+// // 卸载注册 即将事件从token._listener移除
+// CancelToken.prototype.unsubscribe = function() {}
+// // 返回包含token和取消方法cancel的对象
+// CancelToken.source = function()

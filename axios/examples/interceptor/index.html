@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interceptor</title>
+  <script src="/axios.min.js"></script>
+</head>
+<body>
+  <div>Axios -- interceptor</div>
+  <ul id="list"></ul>
+  <script>
+     var myAxios = axios.create()
+      myAxios.interceptors.request.use(function(config) {
+        console.log(config)
+        return config
+      }, function(error) {
+        return Promise.reject(error)
+      })
+
+      const requestInterceptorId = myAxios.interceptors.response.use(function(response){
+        console.log(args)
+        return args[0]
+      }, function(error) {
+        return Promise.reject(error)
+      })
+
+     const responseInterceptorId = myAxios('interceptor/server')
+      .then(({ data }) => {
+        var frame = document.createDocumentFragment()
+        data.forEach(element => {
+          var li = document.createElement('li')
+          li.innerHTML = `${element.id}-${element.name}`;
+          frame.appendChild(li)
+        });
+
+        document.getElementById('list').appendChild(frame)
+      })
+
+      myAxios.interceptors.request.eject(requestInterceptorId)
+      myAxios.interceptors.response.eject(responseInterceptorId)
+  </script>
+</body>
+</html>

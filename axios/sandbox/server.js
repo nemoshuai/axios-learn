@@ -1,3 +1,11 @@
+/*
+ * @Author: your name
+ * @Date: 2022-01-18 14:22:21
+ * @LastEditTime: 2022-01-30 22:32:39
+ * @LastEditors: Please set LastEditors
+ * @Description: 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ * @FilePath: /axios-learn/axios/sandbox/server.js
+ */
 var fs = require('fs');
 var url = require('url');
 var path = require('path');
@@ -29,7 +37,7 @@ server = http.createServer(function (req, res) {
   if (pathname === '/index.html') {
     pipeFileToResponse(res, './client.html');
   } else if (pathname === '/axios.js') {
-    pipeFileToResponse(res, '../dist/axios.js', 'text/javascript');
+    pipeFileToResponse(res, '../lib/axios.js', 'text/javascript');
   } else if (pathname === '/axios.map') {
     pipeFileToResponse(res, '../dist/axios.map', 'text/javascript');
   } else if (pathname === '/api') {

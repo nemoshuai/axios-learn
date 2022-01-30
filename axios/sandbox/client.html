@@ -130,12 +130,15 @@
       }
 
       submit.onclick = function () {
+        var controller = new AbortController();
+
         var options = {
           url: getUrl(),
           params: !acceptsData(method.value) ? getParams() : undefined,
           data: acceptsData(method.value) ? getData() : undefined,
           method: method.value,
-          headers: getHeaders()
+          headers: getHeaders(),
+          signal: controller.signal,
         };
 
         request.innerHTML = JSON.stringify(options, null, 2);
@@ -150,6 +153,10 @@
             console.error('Axios caught an error from request', res.toJSON());
             response.innerHTML = JSON.stringify(res.data, null, 2);
           });
+
+          debugger
+          controller.abort();
+          // source.cancel()
       };
 
       url.onchange = function () {

@@ -16,6 +16,7 @@ var validators = validator.validators;
 function Axios(instanceConfig) {
   this.defaults = instanceConfig;
   this.interceptors = {
+    // 拦截器构造函数，新建request/response拦截器实例
     request: new InterceptorManager(),
     response: new InterceptorManager()
   };

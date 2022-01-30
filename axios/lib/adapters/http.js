@@ -6,9 +6,11 @@ var buildFullPath = require('../core/buildFullPath');
 var buildURL = require('./../helpers/buildURL');
 var http = require('http');
 var https = require('https');
+// 自动跟随重定向的node模块
 var httpFollow = require('follow-redirects').http;
 var httpsFollow = require('follow-redirects').https;
 var url = require('url');
+// 压缩模块
 var zlib = require('zlib');
 var VERSION = require('./../env/data').version;
 var createError = require('../core/createError');
@@ -56,6 +58,7 @@ module.exports = function httpAdapter(config) {
         config.signal.removeEventListener('abort', onCanceled);
       }
     }
+    // 请求resolve和reject的回调
     var resolve = function resolve(value) {
       done();
       resolvePromise(value);
@@ -70,6 +73,7 @@ module.exports = function httpAdapter(config) {
     var headers = config.headers;
     var headerNames = {};
 
+    // 处理请求头
     Object.keys(headers).forEach(function storeLowerName(name) {
       headerNames[name.toLowerCase()] = name;
     });
@@ -87,6 +91,7 @@ module.exports = function httpAdapter(config) {
       headers['User-Agent'] = 'axios/' + VERSION;
     }
 
+    // 处理数据类型
     if (data && !utils.isStream(data)) {
       if (Buffer.isBuffer(data)) {
         // Nothing to do...
@@ -101,6 +106,7 @@ module.exports = function httpAdapter(config) {
         ));
       }
 
+      // 数据长度限制
       if (config.maxBodyLength > -1 && data.length > config.maxBodyLength) {
         return reject(createError('Request body larger than maxBodyLength limit', config));
       }
@@ -135,6 +141,7 @@ module.exports = function httpAdapter(config) {
       delete headers[headerNames.authorization];
     }
 
+    // 判断是https还是http,设置对应的代理
     var isHttpsRequest = isHttps.test(protocol);
     var agent = isHttpsRequest ? config.httpsAgent : config.httpAgent;
 
@@ -207,24 +214,29 @@ module.exports = function httpAdapter(config) {
       setProxy(options, proxy, protocol + '//' + parsed.hostname + (parsed.port ? ':' + parsed.port : '') + options.path);
     }
 
+    // 根据协议判断判断要用https还是http模块
     var transport;
     var isHttpsProxy = isHttpsRequest && (proxy ? isHttps.test(proxy.protocol) : true);
     if (config.transport) {
       transport = config.transport;
-    } else if (config.maxRedirects === 0) {
+    } else if (config.maxRedirects === 0) { // 不配置就是maxRedirects
+      // 无重定向 使用原生模块
       transport = isHttpsProxy ? https : http;
     } else {
       if (config.maxRedirects) {
         options.maxRedirects = config.maxRedirects;
       }
+      // 使用支持跟随重定向的模块
       transport = isHttpsProxy ? httpsFollow : httpFollow;
     }
 
     if (config.maxBodyLength > -1) {
+      // http头部信息最大的size
       options.maxBodyLength = config.maxBodyLength;
     }
 
     if (config.insecureHTTPParser) {
+      // 使用不安全的 HTTP 解析器，当为 true 时接受无效的 HTTP 标头。 应避免使用不安全的解析器
       options.insecureHTTPParser = config.insecureHTTPParser;
     }
 
@@ -236,17 +248,20 @@ module.exports = function httpAdapter(config) {
       var stream = res;
 
       // return the last request in case of redirects
+      // http.ClientRequest
       var lastRequest = res.req || req;
 
 
       // if no content, is HEAD request or decompress disabled we should not decompress
       if (res.statusCode !== 204 && lastRequest.method !== 'HEAD' && config.decompress !== false) {
+        // 压缩返回数据
         switch (res.headers['content-encoding']) {
         /*eslint default-case:0*/
         case 'gzip':
         case 'compress':
         case 'deflate':
         // add the unzipper to the body stream processing pipeline
+        // 创建并返回新的 Unzip 对象（通过自动检测标头来解压缩 Gzip 或 Deflate 压缩的流。）
           stream = stream.pipe(zlib.createUnzip());
 
           // remove the content-encoding in order to not confuse downstream operations
@@ -269,11 +284,13 @@ module.exports = function httpAdapter(config) {
       } else {
         var responseBuffer = [];
         var totalResponseBytes = 0;
+        // 监听数据传输
         stream.on('data', function handleStreamData(chunk) {
           responseBuffer.push(chunk);
           totalResponseBytes += chunk.length;
 
           // make sure the content length is not over the maxContentLength if specified
+          //  内容长度大于maxContentLength 则reject
           if (config.maxContentLength > -1 && totalResponseBytes > config.maxContentLength) {
             // stream.destoy() emit aborted event before calling reject() on Node.js v16
             rejected = true;
@@ -314,19 +331,21 @@ module.exports = function httpAdapter(config) {
       }
     });
 
-    // Handle errors
+    // Handle errors 错误处理
     req.on('error', function handleRequestError(err) {
       if (req.aborted && err.code !== 'ERR_FR_TOO_MANY_REDIRECTS') return;
       reject(enhanceError(err, config, null, req));
     });
 
     // set tcp keep alive to prevent drop connection by peer
+    // 设置tpc 长链接以避免链接断开
     req.on('socket', function handleRequestSocket(socket) {
       // default interval of sending ack packet is 1 minute
+      //  传入true,启用长链接 socket.setKeepAlive([enable][, initialDelay])
       socket.setKeepAlive(true, 1000 * 60);
     });
 
-    // Handle request timeout
+    // Handle request timeout 请求超时
     if (config.timeout) {
       // This is forcing a int timeout to avoid problems if the `req` interface doesn't handle other types.
       var timeout = parseInt(config.timeout, 10);
@@ -348,7 +367,11 @@ module.exports = function httpAdapter(config) {
       // And then these socket which be hang up will devoring CPU little by little.
       // ClientRequest.setTimeout will be fired on the specify milliseconds, and can make sure that abort() will be fired after connect.
       req.setTimeout(timeout, function handleRequestTimeout() {
+        // 超时了 中断请求
         req.abort();
+        /**
+         * transitional: { clarifyTimeoutError, forcedJSONParsing, silentJSONParsing}
+         */
         var transitional = config.transitional || defaults.transitional;
         reject(createError(
           'timeout of ' + timeout + 'ms exceeded',

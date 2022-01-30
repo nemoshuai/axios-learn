@@ -114,4 +114,4 @@ module.exports = function mergeConfig(config1, config2) {
 
 // 用户传入的配置config1
 // 别名方法传入的配置 config2
-mergeConfig(config1, config2)
+// mergeConfig(config1, config2)

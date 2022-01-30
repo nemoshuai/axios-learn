@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancel</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+  <div>Axios -- cancel</div>
+  <ul id="list">
+    <li id="list-item">none</li>
+  </ul>
+  <script>
+    let urls = []
+    for(let i = 0; i < 4; i+=1) {
+      urls.push('https://jsonplaceholder.typicode.com/todos/'+i)
+    }
+
+    function render(data) {
+      document.getElementById('list-item').innerHTML = data.title;
+    }
+
+    // cancelToken
+    var CancelToken = axios.CancelToken
+    var source = CancelToken.source()
+
+    axios(urls[0], {
+      cancelToken: source.token,
+    }).then(res => {
+      render(res.data)
+    }).catch((error) => {
+      console.log('url0取消请求', error)
+    })
+
+    source.cancel('message')
+
+    var source1 = CancelToken.source()
+
+    axios(urls[1], {
+      // 通过cancelToken: source.token, 实现urls[0]，urls[1]根据source.cancel()一起取消
+      cancelToken: source1.token,
+    }).then(res => {
+      render(res.data)
+      console.log('url1 data',res.data);
+    }).catch((error) => {
+      console.log('url1取消请求', error)
+    })
+
+    
+    var cancel;
+
+    axios(urls[2], {
+      cancelToken: new CancelToken(function(c) { cancel = c })
+    }).then(res => {
+      render(res.data)
+      console.log('url2 data',res.data);
+    }).catch((error) => {
+      console.log('url2取消请求', error)
+    })
+
+    cancel();
+
+
+    // 推荐
+    var controller = new AbortController()
+    axios(urls[3], {
+      signal: controller.signal
+    }).then(res => {
+      render(res.data)
+      console.log('url3 data',res.data);
+    }).catch((error) => {
+      if( axios.isCancel(error)) {
+        console.log('url3取消请求', error)
+      } else {
+
+      }
+    })
+
+    controller.abort('controller cancel')
+    
+  </script>
+</body>
+</html>
